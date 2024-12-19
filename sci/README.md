@@ -2,27 +2,33 @@
 
 This working document contains notes about technical insights on the secure cryptographic interface (SCI). For context, see [Wallet Secure Cryptographic Commons](../README.md).
 
-## Vidua Inside SCI
+## Example interface
 
-This is a high-level design for the SCI that a wallet instance uses to apply Vidua’s local WSCA agent. This local WSCA agent communicates to a remote HSM-backed WSCA service using an end-to-end encrypted protocol. Multiple authentication mechanisms are available to the wallet provider, including one based on [SCAL3](https://github.com/cleverbase/scal3). The local WSCA agent is available in native Android and iOS code and deployed in [Vidua Wallet](https://vidua.nl/en/user/).
+By comparing multiple SCI specifiations, we may be able to come up with a harmonised one.
 
-### Value objects
+### Vidua Inside SCI
 
-The user receives a **voucher** from the wallet provider. The voucher is the capability to activate the WSCA configuration as an identification means of either an unverified user or a verified user, with a provider-specified authentication mechanism.
+Vidua provides a Remote WSCD service for digital identity wallets. Below is a high-level overview the SCI that a wallet instance uses to apply the local WSCA agent of this service. This local WSCA agent communicates to a remote WSCA service using an end-to-end encrypted protocol. The remote WSCA service is backed by a stateless HSM application. The wallet provider can select from multiple authentication mechanisms, including one based on [SCAL3](https://github.com/cleverbase/scal3). The local WSCA agent is available in native Android and iOS code and deployed for example in [Vidua Wallet](https://vidua.nl/en/user/).
 
-The user sets a **person identification number** (PIN) during activation, for subsequent user authentication.
+#### Value objects
+
+The wallet provider provides a **voucher** to a user. The voucher is the capability to activate the WSCA configuration as an identification means of either an unverified user or a verified user, with a provider-specified authentication mechanism.
+
+During activation, the user sets a **person identification number** (PIN) for subsequent user authentication.
 
 The user provides a **WSCA instruction** which is a sequence of applicatives from a predefined instruction set. The reason for sequencing is that several wallet actions require multiple cryptographic operations, such as a combination of proving possession and decrypting attribute values.
 
 The WSCA returns a **WSCA result** which is either an error message or a sequence of outputs resulting from successful execution of all WSCA instructions. As a side effect, the remote WSCA service updates its persisted state.
 
-### The WSCA-Empower function
+#### Application interface
 
-The user requests empowerment, which combines registration in the WSCA and activation of the wallet unit as an identification means. Optionally, the process includes the request to execute initial WSCA instructions, such as key generation.
+##### Empowerment
+
+The user requests empowerment, which combines registration in the WSCA and activation of the wallet unit as an identification means. The process includes the request to execute zero or more initial WSCA instructions, such as key generation.
 
 ```
 Inputs:
-- application, a reference to a WSCA configuration
+- application, a representation of a WSCA configuration
 - voucher, an opaque byte string enabling empowerment
 - pin, an UTF-8 string representing the user PIN
 - instruction, a WSCA instruction
@@ -30,67 +36,123 @@ Inputs:
 Outputs:
 - result, a WSCA result
 
-def WSCA-Empower(application, voucher, pin, instruction)
+def empower(application, voucher, pin, instruction)
 ```
 
-### The WSCA-Confirm function
+##### Confirmation
 
 The user requests confirmation, which combines authentication and authorisation to execute WSCA instructions.
 
 ```
 Inputs:
-- application, a reference to a WSCA configuration
+- application, a representation of a WSCA configuration
 - pin, an UTF-8 string representing the user PIN
 - instruction, a WSCA instruction
 
 Outputs:
 - result, a WSCA result
 
-def WSCA-Confirm(application, pin, instruction)
+def confirm(application, pin, instruction)
 ```
 
-### Instruction set
+#### Instruction set
 
-Instructions refer to managed keys using labels, encoded as UTF-8 strings. Support for Hierarchical Deterministic Keys is planned depending on the outcome of [Topic B](https://github.com/eu-digital-identity-wallet/eudi-doc-architecture-and-reference-framework/discussions/354). This change would affect the document authentication and trust evidence instructions.
+The instruction set consists of applicatives, specified with user-provided inputs and expected WSCA outputs.
 
-#### Managed keys
+Not all instructions are supported yet. Support for Hierarchical Deterministic Keys is planned depending on the outcome of [Topic B](https://github.com/eu-digital-identity-wallet/eudi-doc-architecture-and-reference-framework/discussions/354). This change would affect the document authentication and trust evidence instructions.
 
-```
-ListLabels → labels
-DestroyKey label → success
-```
+##### Key management
 
-#### Symmetric data encryption keys
+Instructions refer to managed keys using labels, encoded as UTF-8 strings.
 
 ```
-StoreData label → fresh-key
-ReadData label → key
+Outputs:
+- labels, a list of labels of user-managed keys
+
+instruction ListLabels()
+```
+
+##### Symmetric data encryption keys
+
+Key values are transmitted over the end-to-end encrypted channel to the HSM application.
+
+```
+Inputs:
+- label, a label that is not yet assigned
+
+Outputs:
+- key, a fresh data encryption key
+
+instruction StoreData(label)
+```
+
+```
+Inputs:
+- label, a label of a data encryption key
+
+Outputs:
+- key, the assigned data encryption key
+
+instruction ReadData(label)
+```
+
+```
+Inputs:
+- label, a label of a data encryption key
+
+instruction DeleteData(label)
+```
+
+##### Document authentication keys
+
+```
+Inputs:
+- label, a label that is not yet assigned
+- type, either ECDSA-P256 or EC-SDSA-P256 or ECDH-P256
+
+Outputs:
+- pk, a public key
+
+instruction GenerateKeyPair(label, type)
+```
+
+###### Non-repudiable proof of possession
+
+```
+Inputs:
+- label, a label assigned to an ECDSA-P256 or EC-SDSA-P256 key
+- message, an opaque byte array
+
+Outputs:
+- signature, a digital signature value for proving possession
+
+instruction SignMessage(label, message)
 ````
 
-#### Document authentication keys
+###### Plausibly deniable proof of possession
 
 ```
-GenerateKeyPair label type → pk
-````
+Inputs:
+- label, a label assigned to an ECDH-P256 key
+- pk', the reader’s public key
 
-where `type = ECDSA-P256 | EC-SDSA-P256 | ECDH-P256`.
+Outputs:
+- Z_AB, the shared secret value for proving possession
 
-##### Non-repudiable proof of possession
-
-```
-SignMessage label message → digital-signature-value
-````
-
-##### Plausibly deniable proof of possession
-
-```
-CreateSharedSecret label pk' → Z_AB
+instruction CreateSharedSecret(label, pk')
 ```
 
-#### Trust evidence issuance
+##### Trust evidence issuance
 
 ```
-AttestKeyPair label nonce → attestation
+Inputs:
+- label, a label assigned to a document authentication key
+- nonce, an opaque byte string
+
+Outputs:
+- attestation, a byte string attesting WSCA binding of the key to the user
+
+instruction AttestKeyPair(label, nonce)
 ```
 
 ## Related resources
