@@ -116,6 +116,13 @@ Outputs:
 instruction GenerateKeyPair(label, type)
 ```
 
+```
+Inputs:
+- label, a label assigned to a document authentication key
+
+instruction DestroyPrivateKey(label)
+```
+
 ###### Non-repudiable proof of possession
 
 ```
@@ -134,10 +141,10 @@ instruction SignMessage(label, message)
 ```
 Inputs:
 - label, a label assigned to an ECDH-P256 key
-- pk', the reader’s public key
+- pk', the reader's public key
 
 Outputs:
-- Z_AB, the shared secret value for proving possession
+- Z_AB, the shared secret value FE2OS(x_S) with S = [sk]pk'
 
 instruction CreateSharedSecret(label, pk')
 ```
