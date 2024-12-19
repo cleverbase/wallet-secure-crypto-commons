@@ -154,7 +154,7 @@ Outputs:
 instruction CreateSharedSecret(label, hdk, pk')
 ```
 
-##### Trust evidence issuance
+##### Trust evidence
 
 ```
 Inputs:
@@ -168,8 +168,96 @@ Outputs:
 instruction AttestKeyPair(label, hdk, nonce)
 ```
 
+### Identity Credential SCI
+
+This is defined in the [SecureArea](https://github.com/openwallet-foundation-labs/identity-credential/blob/b42a11648f3d3ddd1fb77286e9b39f35992d04cf/identity/src/commonMain/kotlin/com/android/identity/securearea/SecureArea.kt) abstraction from Identity Credential ([to be renamed](https://github.com/openwallet-foundation-labs/identity-credential/issues/422)) 202408.1.
+
+#### Value objects
+
+The user optionally obtains **key unlock data** before providing some instructions. Alternatively, the WSCA interactively obtains this data, for example using FaceID or TouchID.
+
+#### Application interface
+
+The abstraction does not provide a common interface for registration and activation. Instructions are provided individually by the wallet instance over a synchronous interface.
+
+#### Instruction set
+
+##### Key management
+
+Instructions refer to managed keys using aliases, encoded as UTF-16 strings specified by the wallet instance.
+
+```
+Inputs:
+- alias, an alias assigned to a user-managed key
+
+Outputs:
+- key, an elliptic curve public key
+- purposes, a set of key purposes: signing or key agreement
+- attestation, a key attestation represented as an X.509 certificate chain
+
+instruction GetKeyInfo(alias)
+```
+
+Keys may be invalidated, for example if the user is not anymore authenticated.
+
+```
+Inputs:
+- alias, an alias assigned to a user-managed key
+
+Outputs:
+- invalidated, true or false
+
+instruction GetKeyInvalidated(alias)
+```
+
+##### Document authentication keys
+
+```
+Inputs:
+- alias, a alias that is not yet assigned
+- purposes, a set of key purposes: signing or key agreement
+- curve, an identified curve such as P-256
+
+instruction CreateKey(alias, purposes, curve)
+```
+
+```
+Inputs:
+- alias, an alias assigned to a user-managed key
+
+instruction DeleteKey(alias)
+```
+
+###### Non-repudiable proof of possession
+
+```
+Inputs:
+- alias, an alias assigned to a user-managed key
+- algorithm, an identified signature algorithm such as ECDSA with SHA-256
+- dts, a byte string representing data to sign
+- kud, key unlock data
+
+Outputs:
+- signature, an elliptic curve digital signature value
+
+instruction Sign(alias, algorithm, dts, kud)
+```
+
+###### Plausibly deniable proof of possession
+
+```
+Inputs:
+- alias, an alias assigned to a user-managed key
+- other, the reader's public key
+- kud, key unlock data
+
+Outputs:
+- Z_AB, the shared secret value FE2OS(x_S) with S = [sk]other
+
+instruction KeyAgreement(alias, other, kud)
+```
+
 ## Related resources
 
 - [Hierarchical Deterministic Keys](https://datatracker.ietf.org/doc/html/draft-dijkhuis-cfrg-hdkeys-01), draft-dijkhuis-cfrg-hdkeys-01
-- [SecureArea](https://github.com/openwallet-foundation-labs/identity-credential/blob/b42a11648f3d3ddd1fb77286e9b39f35992d04cf/identity/src/commonMain/kotlin/com/android/identity/securearea/SecureArea.kt), Identity Credential 202408.1
 - [SecureArea](https://github.com/eu-digital-identity-wallet/eudi-lib-ios-iso18013-data-model/blob/ef353c447c7716c1fe5f5905ff98e089f5a29d43/Sources/MdocDataModel18013/SecureArea/SecureArea.swift), eudi-lib-ios-iso18013-data-model v0.4.1
