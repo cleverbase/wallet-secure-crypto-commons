@@ -14,7 +14,9 @@ Vidua provides a Remote WSCD service for digital identity wallets. Below is a hi
 
 The wallet provider provides a **voucher** to a user. The voucher is the capability to activate the WSCA configuration as an identification means of either an unverified user or a verified user, with a provider-specified authentication mechanism.
 
-During activation, the user sets a **person identification number** (PIN) for subsequent user authentication.
+During activation, the user sets a **person identification number** (PIN) for subsequent user authentication and authorisation.
+
+Each authentication and authorisation requires a **challenge**. This is a capability that may be used only once and may pose additional constraints, such as a time limit.
 
 The user provides a **WSCA instruction** which is a sequence of applicatives from a predefined instruction set. The reason for sequencing is that several wallet actions require multiple cryptographic operations, such as a combination of proving possession and decrypting attribute values.
 
@@ -46,24 +48,25 @@ The user requests confirmation, which combines authentication and authorisation 
 ```
 Inputs:
 - application, a representation of a WSCA configuration
+- challenge, an opaque byte string enabling confirmation
 - pin, an UTF-8 string representing the user PIN
 - instruction, a WSCA instruction
 
 Outputs:
 - result, a WSCA result
 
-def confirm(application, pin, instruction)
+def confirm(application, challenge, pin, instruction)
 ```
 
 #### Instruction set
 
 The instruction set consists of applicatives, specified with user-provided inputs and expected WSCA outputs.
 
-Not all instructions are supported yet. Support for Hierarchical Deterministic Keys is planned depending on the outcome of [Topic B](https://github.com/eu-digital-identity-wallet/eudi-doc-architecture-and-reference-framework/discussions/354). This change would affect the document authentication and trust evidence instructions.
+Not all instructions are supported yet. Support for Hierarchical Deterministic Keys (HDKeys) is planned depending on the outcome of [Topic B](https://github.com/eu-digital-identity-wallet/eudi-doc-architecture-and-reference-framework/discussions/354). Support for Proof of Assocation (PoA) may be added depending on the outcomes of [Topic C](https://github.com/eu-digital-identity-wallet/eudi-doc-architecture-and-reference-framework/issues/333) and [Topic K](https://github.com/eu-digital-identity-wallet/eudi-doc-architecture-and-reference-framework/issues/341).
 
 ##### Key management
 
-Instructions refer to managed keys using labels, encoded as UTF-8 strings.
+Instructions refer to managed keys using labels, encoded as UTF-8 strings specified by the wallet instance.
 
 ```
 Outputs:
@@ -111,7 +114,7 @@ Inputs:
 - type, either ECDSA-P256 or EC-SDSA-P256 or ECDH-P256
 
 Outputs:
-- pk, a public key
+- hdk, an root HDKey representation
 
 instruction GenerateKeyPair(label, type)
 ```
@@ -128,12 +131,13 @@ instruction DestroyPrivateKey(label)
 ```
 Inputs:
 - label, a label assigned to an ECDSA-P256 or EC-SDSA-P256 key
+- hdk, an HDKey representation
 - message, an opaque byte array
 
 Outputs:
 - signature, a digital signature value for proving possession
 
-instruction SignMessage(label, message)
+instruction SignMessage(label, hdk, message)
 ````
 
 ###### Plausibly deniable proof of possession
@@ -141,12 +145,13 @@ instruction SignMessage(label, message)
 ```
 Inputs:
 - label, a label assigned to an ECDH-P256 key
+- hdk, an HDKey representation
 - pk', the reader's public key
 
 Outputs:
 - Z_AB, the shared secret value FE2OS(x_S) with S = [sk]pk'
 
-instruction CreateSharedSecret(label, pk')
+instruction CreateSharedSecret(label, hdk, pk')
 ```
 
 ##### Trust evidence issuance
@@ -154,12 +159,13 @@ instruction CreateSharedSecret(label, pk')
 ```
 Inputs:
 - label, a label assigned to a document authentication key
-- nonce, an opaque byte string
+- hdk, an HDKey representation
+- nonce, an opaque byte string to be included in the attestation
 
 Outputs:
 - attestation, a byte string attesting WSCA binding of the key to the user
 
-instruction AttestKeyPair(label, nonce)
+instruction AttestKeyPair(label, hdk, nonce)
 ```
 
 ## Related resources
