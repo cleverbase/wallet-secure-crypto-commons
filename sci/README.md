@@ -282,6 +282,7 @@ instruction KeyAgreement(alias, other, kud)
 - [ ] Standardise enrolment? Including re-enrolment use cases?
 - [ ] Standardise handling of symmetric encryption keys? For example to protect attribute values.
 - [ ] Standardise ways of obtaining key unlock data in the remote WSCD case? For example using [SCAL3](https://github.com/cleverbase/scal3).
+- [ ] Specify SCI abstract data model, with bindings for Kotlin, Swift, JavaScript?
 
 ## Related resources
 
