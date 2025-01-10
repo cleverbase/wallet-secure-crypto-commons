@@ -257,6 +257,32 @@ Outputs:
 instruction KeyAgreement(alias, other, kud)
 ```
 
+## Design issues
+
+- [ ] Terminology: identifying a key by `label` versus `alias`: `alias` since it clarifies that it’s an application-specified identifier
+- [ ] Terminology: `create` or `generate` key?
+- [ ] Terminology: `delete` or `destroy` key?
+- [ ] Terminology: verbs versus nounce: `CreateSharedSecret` or `KeyAgreement`?
+- [ ] Terminology: `key unlock data` (SecureArea) or `confirmation` (Vidua) or (wallet) `activation data` (CEN)?
+- [ ] Key purposes: constrain to always have a single purpose?
+- [ ] Signing algorithm: enable user to specify upon signing, or upon key creation?
+- [ ] Encoding: constrain `alias` character set?
+- [ ] Supporting HDK and other key blinding handles (ARF [Discussion topic B](https://github.com/eu-digital-identity-wallet/eudi-doc-architecture-and-reference-framework/issues/332)):
+	- integrate into `alias` string?
+	- replace by COSE/JOSE structure?
+	- add key blinding / key association parameter?
+- [ ] Proof of association? ARF [Topic 18](https://github.com/eu-digital-identity-wallet/eudi-doc-architecture-and-reference-framework/blob/main/docs/annexes/annex-2/annex-2-high-level-requirements.md#a2318-topic-18---relying-party-handling-eudi-wallet-attribute-combined-presentation), [Discussion topic K](https://github.com/eu-digital-identity-wallet/eudi-doc-architecture-and-reference-framework/issues/341)
+- [ ] Key attestations with WP-provided nonces?
+- [ ] Batching instructions, with stateless remote WSCD and limited request-response exchanges:
+	- request handling of a sequence of instructions, receive a sequence of results?
+	- request key unlock data for a batch, then provide and execute instructions one-by-one?
+	- request key unlock data for a batch, then execute all instructions and cache results, for requesting results one-by-one?
+	- multiple interaction models, but standardise the instruction data model?
+- [ ] Key invalidation: key unlock data may be bound to specific input (message or key agreement public key), not to the key overall
+- [ ] Standardise enrolment? Including re-enrolment use cases?
+- [ ] Standardise handling of symmetric encryption keys? For example to protect attribute values.
+- [ ] Standardise ways of obtaining key unlock data in the remote WSCD case? For example using [SCAL3](https://github.com/cleverbase/scal3).
+
 ## Related resources
 
 - [Hierarchical Deterministic Keys](https://datatracker.ietf.org/doc/html/draft-dijkhuis-cfrg-hdkeys-01), draft-dijkhuis-cfrg-hdkeys-01
